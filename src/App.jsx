@@ -1,128 +1,101 @@
 import { useEffect, useState } from "react";
-
-const initialArticlesData = {
-
-  title: "",
-  author: "",
-  content: "",
-  image: "",
-  available: false,
-}
+import axios from "axios";
+const initialArticle = { title: "", content: "", author: "" }
 
 
 function App() {
-  const [activeArticles, setActiveArticles] = useState([]);
-  const [availableMessage, setAvailableMessage] = useState("");
-  const [initialArticles, setInitialArticles] = useState(initialArticlesData);
-
-  useEffect(() => {
-    if (initialArticles.available) {
-      
-      setAvailableMessage("attenzione, l'articolo sarà visibile");
-    } else {
-      
-      setAvailableMessage("attenzione, l'articolo sarà nascosta");
-    }
-  }, [initialArticles.available]);
-
-  const handleArticlesForm = (event) => {
-
-    event.preventDefault()
-
-      const newArticle = {
-        ...initialArticles,
-        id: Date.now(),
-      };
-      const newArray = [...activeArticles, newArticle];
-
-      setActiveArticles(newArray);
-
-     setInitialArticles(initialArticlesData);
-    }
-
-
+  const [formData, setFormData] = useState(initialArticle);
+  const [articles, setArticles] = useState([]);
   
-  const removeElem = (toRemove) => {
-    const newArray1 = activeArticles.filter((curItem) => curItem.id !== toRemove.id)
-    setActiveArticles(newArray1)
+  function loadData() {
+  axios.get("http://localhost:3001/posts").then((resp) => {
+    console.log(resp.data);
+  setArticles(resp.data)
+  })
   }
+
+function deleteData(id) {
+  axios.delete(`http://localhost:3001/posts/${id}`).then(() => console.log("cancellazione effettuata"))
+}
+
+function addData(newArticle) {
+  axios.post("http://localhost:3001/posts", newArticle).then(() => {
+    console.log("roba aggiunta")
+    loadData();
+  })
+}
+
+useEffect(() => {
+loadData();
+}, [])
+
   const handleInputChange = (event) => {
-    const keyToChange = event.target.name;
-    // Se l'input è checkbox,
-    //    allora il value da inserire sarà true o false, preso da target.checked
-    let newValue;
-
-    if (event.target.type === "checkbox") {
-      newValue = event.target.checked;
-    } else {
-      newValue = event.target.value;
-    }
-
-    const newData = {
-      ...initialArticles,
-      [keyToChange]: newValue,
-    };
-
-    setInitialArticles(newData);
+    const { name, value } = event.target;
+    setFormData((prev_data) => ({
+      ...prev_data,
+      [name]: value
+    }))
   };
 
+  const handleFormSubmit = (event) => {
+    event.preventDefault();
+    const { title, content, author } = formData;
+    if (title && content && author) {
+      const newArticle = { title, content, author }; 
+      addData(newArticle); 
+      setFormData(initialArticle);
+    }
+  };
+  
+  const handleDelete = (id) => {
+    setArticles((prev) => prev.filter((curArticle) => curArticle.id !== id))
+    deleteData(id);
+  };
+  console.log(articles)
+  
   return (
     <>
       <div className="container">
-        <h2>I nostri articoli</h2>
-        {activeArticles.length > 0 ? (
-          <div >
-            {
-              activeArticles.map((curItem) => (<div key={curItem.id}>
-                <h4>{curItem.title}</h4>
-                <p>{curItem.author}</p>
-                <button onClick={() => { removeElem(curItem) }}>🗑️</button>
-              </div>
-              ))
-            }
-          </div>
-        ) : (
-          <p>nessun articolo inserito</p>
-        )
-        }
+        <section>
+          <h1>Aggiugi un nuovo articolo</h1>
 
-        <h2>Aggiungi articolo</h2>
-        <form action="" onSubmit={handleArticlesForm}>
-          <div className="mb-3">
-            <label htmlFor="titolo">Inserire titolo </label>
-            <input className="form-control" id="titolo" type="text" value={initialArticles.title} onChange={handleInputChange} name="title" />
-          </div>
+          <form onSubmit={handleFormSubmit}>
 
-          <div>
-            <label htmlFor="autore">Inserire autore</label>
-            <input type="text" id="autore" className="form-control" value={initialArticles.author}
-              onChange={handleInputChange} name="author" />
-          </div>
-          <div>
-            <label htmlFor="content">Inserire contenuto</label>
-            <input type="text" id="content" className="form-control" value={initialArticles.content}
-              onChange={handleInputChange} name="content" />
-          </div>
-          <div>
-            <label htmlFor="image">Inserire immagine</label>
-            <input type="text" id="image" className="form-control" value={initialArticles.image}
-              onChange={handleInputChange} name="image" />
-          </div>
-          <div className="my-3">
-              <label htmlFor="available">Disponibile</label>
-              <input
-                id="available"
-                type="checkbox"
-                name="available"
-                checked={initialArticles.available}
-                onChange={handleInputChange}
-              />
-              <div>{availableMessage}</div>
+            <div className="mb-3">
+              <label htmlFor="title">Titolo dell'articolo</label>
+              <input type="text" className="form-control" id="title" name="title" value={formData.title} onChange={handleInputChange} />
             </div>
 
+            <div className="mb-3">
+              <label htmlFor="content">Il contenuto dell'articolo</label>
+              <input type="text" className="form-control" id="content" name="content" value={formData.content} onChange={handleInputChange} />
+            </div>
 
-          <button type="submit" className="btn btn-primary">Salva</button>
-        </form>
+            <div className="mb-3">
+              <label htmlFor="author">Nome dell'autore</label>
+              <input type="text" className="form-control" id="author" name="author" value={formData.author} onChange={handleInputChange} />
+            </div>
+
+            <button type="submit" className="btn btn-primary">Pubblica</button>
+
+          </form>
+        </section>
+        <div>
+          {articles.map((curArticle) => (
+            <div key={curArticle.id}>
+              <h2>
+                {curArticle.title}
+              </h2>
+              <div>
+                {curArticle.content}
+              </div>
+              <div>
+                {curArticle.author}
+              </div>
+              <button onClick={() => handleDelete(curArticle.id)}>Elimina</button>
+            </div>
+          ))}
+        </div>
       </div>
     </>
   )
